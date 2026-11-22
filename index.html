@@ -158,18 +158,21 @@ const SAMPLE="Benvenuto in Leggimi.\n\nCarica un PDF o un file di testo dal tuo 
 const MALE=/\b(luca|cosimo|diego|giuseppe|paolo|giorgio|roberto|marco|matteo|andrea|alessandro|federico|daniel|thomas|alex|fred|aaron|arthur|oliver|male|uomo|maschile)\b/i;
 // Voci predefinite di ElevenLabs (parlano anche italiano con il modello multilingue)
 const EL_DEFAULT=[
+  {id:'YWXroL1TL4NDznxN5Cy4',name:'Felice',d:'maschile, italiana, matura e calda'},
   {id:'nPczCjzI2devNBz1zQrb',name:'Brian',d:'maschile, profonda e calda'},
   {id:'pNInz6obpgDQGcFmaJgB',name:'Adam',d:'maschile, profonda'},
   {id:'onwK4e9ZLuTAKqWW03F9',name:'Daniel',d:'maschile, profonda e autorevole'},
   {id:'JBFqnCBsd6RMkjVDRZzb',name:'George',d:'maschile, calda, da narratore'},
   {id:'EXAVITQu4vr4xnSDxMaL',name:'Sarah',d:'femminile, morbida'}
 ];
-const DEEP_EL='nPczCjzI2devNBz1zQrb';
+const DEEP_EL='YWXroL1TL4NDznxN5Cy4';
 
 let text=store.get('lg_text')||SAMPLE, parts=[], chunks=[], idx=+(store.get('lg_idx')||0);
 let engine=store.get('lg_engine')||'device', apiKey=store.get('lg_key')||'';
 let playing=false, paused=false, voices=[], token=0;
 let elVoices=EL_DEFAULT;try{const v=JSON.parse(store.get('lg_elvoices')||'null');if(v&&v.length)elVoices=v}catch(e){}
+if(!elVoices.some(v=>v.id===DEEP_EL))elVoices=[EL_DEFAULT[0],...elVoices];
+if(!store.get('lg_felice')){store.set('lg_elvoice',DEEP_EL);store.set('lg_felice','1')}
 
 const msg=t=>{$('msg').textContent=t;$('msg').hidden=!t};
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -300,7 +303,7 @@ function explain(e){
   if(e.status===401)return d.includes('quota')||d.includes('credit')?'Crediti ElevenLabs esauriti.':'Chiave API non valida o senza permesso di sintesi vocale. Controllala nelle impostazioni.';
   if(e.status===402||d.includes('quota'))return 'Crediti ElevenLabs esauriti per questo mese.';
   if(e.status===429)return 'ElevenLabs è occupato o hai raggiunto il limite di richieste. Riprova tra poco.';
-  if(e.status===404||e.status===400&&d.includes('voice'))return 'Questa voce non è disponibile sul tuo account. Scegline un\'altra.';
+  if(e.status===404||e.status===400&&d.includes('voice'))return 'Questa voce non è ancora nel tuo account: su elevenlabs.io aprila e premi "Aggiungi alle mie voci" (Add to My Voices), poi riprova.';
   return 'Errore ElevenLabs '+(e.status||'')+(e.detail?': '+e.detail:'');
 }
 function b64blob(b64){const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'audio/mpeg'})}
@@ -416,7 +419,7 @@ $('loadVoices').onclick=async()=>{
     const list=(j.voices||[]).map(v=>{const l=v.labels||{};const g=l.gender==='male'?'maschile':l.gender==='female'?'femminile':'';return{id:v.voice_id,name:v.name,d:[g,l.description||l.descriptive||l.accent].filter(Boolean).join(', ')}});
     if(!list.length)throw 'vuoto';
     list.sort((a,b)=>(b.d.includes('maschile')-a.d.includes('maschile'))||a.name.localeCompare(b.name));
-    elVoices=list;store.set('lg_elvoices',JSON.stringify(list));fillVoices();labels();
+    if(!list.some(v=>v.id===DEEP_EL))list.unshift(EL_DEFAULT[0]);elVoices=list;store.set('lg_elvoices',JSON.stringify(list));fillVoices();labels();
     keyState(`Caricate ${list.length} voci dal tuo account.`,'ok');
   }catch(e){keyState('Non riesco a caricare le voci del tuo account'+(e===401?' (la chiave non ha il permesso "voci")':'')+'. Restano quelle predefinite.','bad')}
 };
@@ -445,6 +448,21 @@ if('mediaSession' in navigator){
 }
 
 function setText(t){stopAll();text=t;idx=0;store.set('lg_text',t);render();setIcon()}
+// Legge i file di testo in qualsiasi codifica (UTF-8, UTF-16, Windows/ANSI) e sistema gli accenti
+async function readText(f){
+  const b=new Uint8Array(await f.arrayBuffer());
+  let t;
+  if(b[0]===0xFF&&b[1]===0xFE)t=new TextDecoder('utf-16le').decode(b);
+  else if(b[0]===0xFE&&b[1]===0xFF)t=new TextDecoder('utf-16be').decode(b);
+  else{try{t=new TextDecoder('utf-8',{fatal:true}).decode(b)}catch(e){t=new TextDecoder('windows-1252').decode(b)}}
+  return fixAccents(t.replace(/^﻿/,''));
+}
+function fixAccents(t){
+  const map={'`':'̀','´':'́','ˋ':'̀','ˊ':'́','¨':'̈','^':'̂','ˆ':'̂'};
+  return t.replace(/([aeiouAEIOU])\s?([`´ˋˊ¨ˆ])/g,(m,v,a)=>(v+map[a]).normalize('NFC'))
+          .replace(/([`´ˋˊ])\s?([aeiouAEIOU])/g,(m,a,v)=>(v+map[a]).normalize('NFC'))
+          .normalize('NFC');
+}
 /* ---------- PDF ---------- */
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 let pdfReady=null;
@@ -487,7 +505,7 @@ async function pdfText(file){
     }
     pages.push(out);
   }
-  const text=pages.filter(Boolean).join('\n\n').trim();
+  const text=fixAccents(pages.filter(Boolean).join('\n\n').trim());
   if(text.replace(/\s/g,'').length<15)throw new Error('Questo PDF sembra una scansione (immagini senza testo): non riesco a leggerlo.');
   return text;
 }
@@ -496,7 +514,7 @@ $('file').onchange=async e=>{
   try{
     let t;
     if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){stopAll();t=await pdfText(f)}
-    else{t=await f.text();if(/\.html?$/i.test(f.name)){const d=new DOMParser().parseFromString(t,'text/html');t=d.body.innerText||d.body.textContent}}
+    else{t=await readText(f);if(/\.html?$/i.test(f.name)){const d=new DOMParser().parseFromString(t,'text/html');t=d.body.innerText||d.body.textContent}}
     setText(t.replace(/\r/g,''));$('st').textContent='Caricato: '+f.name;
   }catch(e){msg(e.message);$('st').textContent='Pronto'}
 };
@@ -504,7 +522,7 @@ let editing=false;
 $('edit').onclick=()=>{
   editing=!editing;
   if(editing){$('input').value=text===SAMPLE?'':text;$('input').hidden=false;$('reader').hidden=true;$('hint').hidden=true;$('edit').textContent='Fatto';$('edit').classList.add('fill');$('input').focus()}
-  else{$('input').hidden=true;$('reader').hidden=false;$('hint').hidden=false;$('edit').textContent='Scrivi o incolla';$('edit').classList.remove('fill');setText($('input').value)}
+  else{$('input').hidden=true;$('reader').hidden=false;$('hint').hidden=false;$('edit').textContent='Scrivi o incolla';$('edit').classList.remove('fill');setText(fixAccents($('input').value))}
 };
 $('clear').onclick=()=>{if(editing)$('input').value='';else setText('')};
 
