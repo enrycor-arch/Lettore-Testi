@@ -140,6 +140,7 @@ input[type=range]:disabled{opacity:.4}
     <div class="presets">
       <button class="chip" id="pNat">Naturale</button>
       <button class="chip" id="pDeep">Maschile profonda</button>
+      <button class="chip" id="pBest">Voce migliore del telefono</button>
       <span class="eng" id="engLbl"></span>
     </div>
     <div class="set">
@@ -374,6 +375,7 @@ function labels(){
   $('pitch').disabled=engine==='el';
   const deep=engine==='el'?$('voice').value===DEEP_EL:p<=0.75;
   $('pDeep').classList.toggle('on',deep);
+  $('pBest').classList.toggle('on',engine==='device'&&Math.abs(p-0.95)<0.01||engine==='device'&&Math.abs(p-0.85)<0.01);
   $('pNat').classList.toggle('on',engine==='el'?false:Math.abs(p-1)<0.01&&Math.abs($('rate').value-1)<0.01);
   $('engLbl').textContent=engine==='el'?'ElevenLabs':'Voci del telefono';
 }
@@ -401,6 +403,18 @@ $('pDeep').onclick=()=>{
   if(m)$('voice').value=m.voiceURI;
   $('pitch').value=m?0.7:0.55;$('rate').value=0.92;settingsChanged();
   if(!m)$('st').textContent='Nessuna voce maschile italiana: abbasso il tono';
+};
+// Sceglie la voce italiana migliore installata sul telefono (gratis, anche offline)
+$('pBest').onclick=()=>{
+  if(!synth){msg('Questo browser non ha voci di sistema.');return}
+  if(engine!=='device')setEngine('device');
+  voices=synth.getVoices();fillVoices();
+  const it=voices.filter(v=>/^it/i.test(v.lang));
+  if(!it.length){msg('Sul telefono non ci sono voci italiane. Installale da Impostazioni → Accessibilità → Sintesi vocale → Motore di Google → Installa dati vocali → Italiano.');return}
+  const score=v=>(/natural|neural|enhanced|premium|avanzat|network|online|wavenet|studio/i.test(v.name+' '+v.voiceURI)?4:0)+(MALE.test(v.name)?3:0)+(!v.localService?1:0)+(/google|microsoft|apple/i.test(v.name)?1:0);
+  const best=[...it].sort((a,b)=>score(b)-score(a))[0];
+  $('voice').value=best.voiceURI;$('pitch').value=MALE.test(best.name)?0.95:0.85;$('rate').value=0.95;settingsChanged();
+  msg(it.length===1?'Uso "'+best.name+'". Su Android la voce maschile si sceglie nelle impostazioni del telefono: Accessibilità → Sintesi vocale → Motore di Google → Installa dati vocali → Italiano → scegli una voce maschile.':'Uso "'+best.name+'", la migliore voce italiana trovata sul telefono.');
 };
 $('pNat').onclick=()=>{$('pitch').value=1;$('rate').value=1;settingsChanged()};
 
