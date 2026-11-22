@@ -1,5 +1,5 @@
 // Leggimi: fa funzionare l'app anche senza internet (le voci ElevenLabs però richiedono la rete)
-const APP = 'leggimi-v4';
+const APP = 'leggimi-v5';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

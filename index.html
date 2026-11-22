@@ -101,7 +101,8 @@ input[type=range]:disabled{opacity:.4}
       <p class="small" id="keyState">La chiave resta solo su questo telefono. La trovi su elevenlabs.io → il tuo profilo → API Keys.</p>
       <h3>Qualità</h3>
       <select id="model">
-        <option value="eleven_multilingual_v2">Massima qualità (1 credito/carattere)</option>
+        <option value="eleven_v3">Narratore espressivo · Eleven v3 (1 credito/carattere)</option>
+        <option value="eleven_multilingual_v2">Massima qualità, più stabile (1 credito/carattere)</option>
         <option value="eleven_flash_v2_5">Veloce ed economica (½ credito/carattere)</option>
       </select>
       <p class="small" id="cost"></p>
@@ -280,12 +281,20 @@ async function elFetch(k){
   const cacheKey=new URL('./_audio/'+hash(voice+'|'+model+'|'+c.text),location.href).href;
   try{const hit=await (await caches.open('lg-audio')).match(cacheKey);if(hit)return await hit.json()}catch(e){}
   if(!apiKey)throw new Error('nokey');
-  const body={text:c.text,model_id:model,voice_settings:{stability:0.5,similarity_boost:0.75,style:0,use_speaker_boost:true}};
-  if(chunks[k-1])body.previous_text=chunks[k-1].text.slice(-300);
-  if(chunks[k+1])body.next_text=chunks[k+1].text.slice(0,300);
+  // Impostazioni da narratore: un po' più di espressività e interpretazione
+  const v3=model==='eleven_v3';
+  const body={text:c.text,model_id:model,voice_settings:v3?{stability:0.5,similarity_boost:0.8,use_speaker_boost:true}:{stability:0.4,similarity_boost:0.8,style:0.25,use_speaker_boost:true}};
+  if(!v3&&chunks[k-1])body.previous_text=chunks[k-1].text.slice(-300);
+  if(!v3&&chunks[k+1])body.next_text=chunks[k+1].text.slice(0,300);
   let r;
   try{r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/with-timestamps?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':apiKey,'Content-Type':'application/json'},body:JSON.stringify(body)})}
   catch(e){throw new Error('net')}
+  if(!r.ok&&v3&&[400,403,422].includes(r.status)){
+    // Se il tuo piano o la voce non supportano Eleven v3, passo da solo al modello stabile
+    $('model').value='eleven_multilingual_v2';store.set('lg_model','eleven_multilingual_v2');cost();
+    msg('Eleven v3 non è disponibile con questa voce o con il tuo piano: uso il modello "Massima qualità".');
+    return elFetch(k);
+  }
   if(!r.ok){let d='';try{const j=await r.json();d=(j.detail&&(j.detail.message||j.detail.status))||JSON.stringify(j.detail||j)}catch(e){}
     const err=new Error('http');err.status=r.status;err.detail=d;throw err}
   const data=await r.json();
@@ -534,7 +543,7 @@ window.addEventListener('appinstalled',()=>{$('install').hidden=true});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 /* ---------- Avvio ---------- */
-const r=store.get('lg_rate'),p=store.get('lg_pitch'),m=store.get('lg_model');
+const r=store.get('lg_rate'),p=store.get('lg_pitch');let m=store.get('lg_model');if(!store.get('lg_v3')){m='eleven_v3';store.set('lg_model',m);store.set('lg_v3','1')}
 if(r)$('rate').value=r;if(p)$('pitch').value=p;if(m)$('model').value=m;
 if(apiKey)$('key').placeholder='Chiave salvata ••••'+apiKey.slice(-4);
 // Testo condiviso da un'altra app (Android: Condividi → Leggimi)
