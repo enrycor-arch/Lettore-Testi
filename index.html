@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e8483b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Leggimi">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Leggimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121212);--ink:light-dark(#141414,#ededed);--soft:light-dark(#6b6b6b,#a3a3a3);--line:light-dark(#e6e6e6,#2a2a2a);--card:light-dark(#f6f6f4,#1c1c1c);--red:#e8483b;--hl:light-dark(#ffe1dc,#4a1e19)}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+header{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) max(5vw,16px) 8px;max-width:760px;margin:0 auto}
+.logo{width:34px;height:34px;flex:none}
+h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.01em;flex:1}
+main{max-width:760px;margin:0 auto;padding:8px max(5vw,16px) 340px}
+.tabs{display:flex;gap:8px;margin:10px 0 14px;flex-wrap:wrap}
+.btn{font:600 16px "Instrument Sans",sans-serif;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn.fill{background:var(--ink);color:var(--bg)}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}
+.gear{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+input[type=file]{display:none}
+textarea{width:100%;min-height:42vh;font:17px/1.65 Literata,Georgia,serif;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:16px;resize:vertical}
+#reader{font:19px/1.75 Literata,Georgia,serif;background:var(--card);border-radius:14px;padding:20px 18px;min-height:42vh;white-space:pre-wrap;overflow-wrap:anywhere}
+#reader span{cursor:pointer;border-radius:4px;transition:background .25s}
+#reader span.on{background:var(--hl);box-shadow:0 0 0 3px var(--hl)}
+#reader span.done{color:var(--soft)}
+.empty{color:var(--soft);font:16px "Instrument Sans",sans-serif;text-align:center;padding:40px 10px}
+.hint{color:var(--soft);font-size:14px;margin:10px 2px}
+.msg{background:#141414;color:#fff;padding:12px 16px;border-radius:12px;margin:12px 0;font-size:15px}
+.msg[hidden]{display:none}
+/* Impostazioni */
+.sheet{background:var(--card);border-radius:16px;padding:18px;margin:6px 0 16px;border:1.5px solid var(--line)}
+.sheet[hidden]{display:none}
+.sheet h2{font-size:20px;margin:0 0 12px}
+.sheet h3{font-size:15px;margin:18px 0 6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid var(--ink);border-radius:12px;overflow:hidden}
+.seg button{font:600 15px "Instrument Sans",sans-serif;min-height:44px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.field{display:flex;gap:8px;margin-top:6px}
+.field input,.sheet select{flex:1;font:16px "Instrument Sans",sans-serif;min-height:44px;border-radius:10px;border:1.5px solid var(--line);padding:0 12px;background:var(--bg);color:var(--ink);width:100%}
+.small{font-size:13px;color:var(--soft);margin:6px 0 0}
+.small a{color:inherit}
+.ok{color:#1f8a4c;font-weight:600}
+.bad{color:var(--red);font-weight:600}
+/* Lettore */
+.player{position:fixed;left:0;right:0;bottom:0;background:var(--red);color:#fff;padding:14px max(5vw,16px) calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.pin{max-width:760px;margin:0 auto}
+.bar{height:6px;background:rgba(255,255,255,.3);border-radius:9px;overflow:hidden;margin-bottom:12px}
+.bar i{display:block;height:100%;width:0;background:#fff;transition:width .3s}
+.row{display:flex;align-items:center;gap:12px}
+.play{width:68px;height:68px;border-radius:50%;border:0;background:#fff;color:var(--red);display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:0 6px 0 rgba(0,0,0,.15)}
+.play:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.15)}
+.play.busy svg{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.ico{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.player :focus-visible{outline-color:#fff}
+.status{flex:1;font-size:14px;line-height:1.3}
+.status b{display:block;font-size:16px}
+.presets{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.chip{font:600 14px "Instrument Sans",sans-serif;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid rgba(255,255,255,.8);background:transparent;color:#fff;cursor:pointer}
+.chip.on{background:#fff;color:#e8483b}
+.eng{font-size:13px;opacity:.9;margin-left:auto}
+.set{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;margin-top:10px;font-size:13px}
+.set label{display:flex;flex-direction:column;gap:2px}
+.set .wide{grid-column:1/-1}
+.player select{font:16px "Instrument Sans",sans-serif;min-height:40px;border-radius:10px;border:0;padding:0 8px;background:#fff;color:#141414;width:100%}
+input[type=range]{width:100%;accent-color:#fff;height:28px}
+input[type=range]:disabled{opacity:.4}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="4" width="30" height="26" rx="4" fill="currentColor"/><path d="M21 4h7v18l-3.5-3-3.5 3z" fill="#e8483b"/><path d="M7 12h10M7 17h10M7 22h14" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/></svg>
+  <h1>Leggimi</h1>
+  <button class="btn red" id="install" hidden>Installa</button>
+  <button class="gear" id="gear" aria-label="Impostazioni"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</header>
+<main>
+  <div class="msg" id="msg" hidden></div>
+
+  <section class="sheet" id="sheet" hidden>
+    <h2>Impostazioni</h2>
+    <h3>Chi legge</h3>
+    <div class="seg"><button id="eDev">Voci del telefono</button><button id="eEl">ElevenLabs</button></div>
+    <p class="small">Le voci del telefono sono gratis e funzionano anche offline. ElevenLabs ha voci molto più naturali, ma richiede internet e consuma i tuoi crediti.</p>
+
+    <div id="elBox">
+      <h3>Chiave API di ElevenLabs</h3>
+      <div class="field"><input id="key" type="password" autocomplete="off" placeholder="Incolla qui la tua chiave"><button class="btn fill" id="saveKey">Salva</button></div>
+      <p class="small" id="keyState">La chiave resta solo su questo telefono. La trovi su elevenlabs.io → il tuo profilo → API Keys.</p>
+      <h3>Qualità</h3>
+      <select id="model">
+        <option value="eleven_multilingual_v2">Massima qualità (1 credito/carattere)</option>
+        <option value="eleven_flash_v2_5">Veloce ed economica (½ credito/carattere)</option>
+      </select>
+      <p class="small" id="cost"></p>
+      <div class="tabs" style="margin-top:12px">
+        <button class="btn" id="loadVoices">Carica le mie voci</button>
+        <button class="btn" id="clearAudio">Cancella audio salvato</button>
+      </div>
+      <p class="small">L'audio già generato resta salvato sul telefono: riascoltare lo stesso testo con la stessa voce non consuma altri crediti.</p>
+    </div>
+    <div class="tabs" style="margin-top:14px"><button class="btn fill" id="closeSheet">Fatto</button></div>
+  </section>
+
+  <div class="tabs">
+    <label class="btn fill" for="file">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>Carica file</label>
+    <input type="file" id="file" accept=".pdf,application/pdf,.txt,.md,.text,.csv,.html,.htm,text/*">
+    <button class="btn" id="edit">Scrivi o incolla</button>
+    <button class="btn" id="clear">Svuota</button>
+  </div>
+  <textarea id="input" hidden placeholder="Incolla qui il tuo testo…"></textarea>
+  <div id="reader"></div>
+  <p class="hint" id="hint">Tocca una frase per far partire la lettura da lì.</p>
+</main>
+
+<div class="player">
+  <div class="pin">
+    <div class="bar"><i id="prog"></i></div>
+    <div class="row">
+      <button class="ico" id="back" aria-label="Frase precedente"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="play" id="play" aria-label="Leggi"><svg id="pIco" width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
+      <button class="ico" id="fwd" aria-label="Frase successiva"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <div class="status"><b id="st">Pronto</b><span id="sub">Nessun testo</span></div>
+      <button class="ico" id="stop" aria-label="Ferma"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+    </div>
+    <div class="presets">
+      <button class="chip" id="pNat">Naturale</button>
+      <button class="chip" id="pDeep">Maschile profonda</button>
+      <span class="eng" id="engLbl"></span>
+    </div>
+    <div class="set">
+      <label class="wide">Voce<select id="voice"></select></label>
+      <label>Velocità <span id="rv">1×</span><input type="range" id="rate" min="0.5" max="2" step="0.05" value="1"></label>
+      <label>Tono <span id="pv">normale</span><input type="range" id="pitch" min="0.3" max="1.5" step="0.05" value="1"></label>
+    </div>
+  </div>
+</div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const synth=window.speechSynthesis;
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const SAMPLE="Benvenuto in Leggimi.\n\nCarica un PDF o un file di testo dal tuo telefono, oppure tocca \"Scrivi o incolla\" e incolla quello che vuoi ascoltare. Poi premi il grande tasto rosso.\n\nDalla rotella in alto puoi scegliere chi legge: le voci del telefono, gratis, oppure le voci di ElevenLabs, molto più naturali. Tocca una frase qualsiasi per ripartire da lì: Leggimi si ricorda il punto in cui eri rimasto.";
+const MALE=/\b(luca|cosimo|diego|giuseppe|paolo|giorgio|roberto|marco|matteo|andrea|alessandro|federico|daniel|thomas|alex|fred|aaron|arthur|oliver|male|uomo|maschile)\b/i;
+// Voci predefinite di ElevenLabs (parlano anche italiano con il modello multilingue)
+const EL_DEFAULT=[
+  {id:'nPczCjzI2devNBz1zQrb',name:'Brian',d:'maschile, profonda e calda'},
+  {id:'pNInz6obpgDQGcFmaJgB',name:'Adam',d:'maschile, profonda'},
+  {id:'onwK4e9ZLuTAKqWW03F9',name:'Daniel',d:'maschile, profonda e autorevole'},
+  {id:'JBFqnCBsd6RMkjVDRZzb',name:'George',d:'maschile, calda, da narratore'},
+  {id:'EXAVITQu4vr4xnSDxMaL',name:'Sarah',d:'femminile, morbida'}
+];
+const DEEP_EL='nPczCjzI2devNBz1zQrb';
+
+let text=store.get('lg_text')||SAMPLE, parts=[], chunks=[], idx=+(store.get('lg_idx')||0);
+let engine=store.get('lg_engine')||'device', apiKey=store.get('lg_key')||'';
+let playing=false, paused=false, voices=[], token=0;
+let elVoices=EL_DEFAULT;try{const v=JSON.parse(store.get('lg_elvoices')||'null');if(v&&v.length)elVoices=v}catch(e){}
+
+const msg=t=>{$('msg').textContent=t;$('msg').hidden=!t};
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---------- Testo ---------- */
+function split(t){
+  const out=[];const re=/[^.!?…;:\n]+[.!?…;:]*["»”')]*\s*|\n+/g;let m;
+  while((m=re.exec(t))){const s=m[0];
+    if(/^\n+$/.test(s)){out.push({t:s,blank:true});continue}
+    if(s.length>240){(s.match(/[^,]{1,220}(,|$)\s*/g)||[s]).forEach(x=>x&&out.push({t:x}))} else out.push({t:s});
+  }
+  return out;
+}
+function group(){
+  const limit=engine==='el'?900:300;
+  chunks=[];let c=null;
+  parts.forEach((p,i)=>{
+    delete p.chunk;
+    if(p.blank||!p.t.trim()){if(c&&engine!=='el'){chunks.push(c);c=null}else if(c){c.text+=' '}return}
+    if(c&&c.text.length+p.t.length>limit){chunks.push(c);c=null}
+    if(!c)c={ids:[],offs:[],text:''};
+    c.ids.push(i);c.offs.push(c.text.length);c.text+=p.t.replace(/\s+/g,' ');
+    p.chunk=chunks.length;
+  });
+  if(c)chunks.push(c);
+  chunks.forEach(c=>c.text=c.text.trimEnd());
+}
+function render(){
+  parts=split(text);group();elCache.clear();
+  if(idx>=parts.length)idx=0;
+  $('reader').innerHTML=text.trim()?parts.map((p,i)=>p.blank?esc(p.t):`<span data-i="${i}">${esc(p.t)}</span>`).join(''):'<div class="empty">Nessun testo. Carica un file o incolla qualcosa.</div>';
+  mark(false);cost();
+}
+function mark(scroll){
+  document.querySelectorAll('#reader span').forEach(s=>{const i=+s.dataset.i;s.classList.toggle('on',i===idx&&(playing||idx>0));s.classList.toggle('done',i<idx)});
+  const total=parts.length||1;$('prog').style.width=(idx/total*100)+'%';
+  const w=text.trim()?text.trim().split(/\s+/).length:0;
+  $('sub').textContent=chunks.length?`${Math.min(100,Math.round(idx/total*100))}% · circa ${Math.max(1,Math.round(w/(150*(+$('rate').value))))} min di ascolto`:'Nessun testo';
+  store.set('lg_idx',idx);
+  if(scroll){const el=document.querySelector(`#reader span[data-i="${idx}"]`);if(el)el.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})}
+}
+function setIcon(busy){
+  $('pIco').innerHTML=playing&&!paused?'<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>':'<path d="M7 4v16l13-8z"/>';
+  $('play').classList.toggle('busy',!!busy);
+  $('play').setAttribute('aria-label',playing&&!paused?'Pausa':'Leggi');
+  $('st').textContent=busy?'Preparo la voce…':playing?(paused?'In pausa':'Sto leggendo…'):(idx>0?'Fermo':'Pronto');
+  if('mediaSession' in navigator)navigator.mediaSession.playbackState=playing&&!paused?'playing':'paused';
+}
+function chunkOf(i){while(i<parts.length&&parts[i].chunk===undefined)i++;return i<parts.length?parts[i].chunk:-1}
+function finish(){token++;playing=false;paused=false;idx=0;mark(false);setIcon();$('st').textContent='Finito'}
+function stopAll(){token++;if(synth)synth.cancel();audio.pause();playing=false;paused=false}
+
+/* ---------- Motore 1: voci del telefono ---------- */
+let curChunk=-1,queuedTo=-1,keep=[],lastAlive=Date.now(),startedAt=0;
+function enqueue(k,my,startPart){
+  const c=chunks[k];if(!c)return;
+  let from=0;if(startPart!==undefined){const j=c.ids.indexOf(startPart);if(j>0)from=c.offs[j]}
+  const u=new SpeechSynthesisUtterance(c.text.slice(from));
+  const v=voices.find(v=>v.voiceURI===$('voice').value);
+  if(v){u.voice=v;u.lang=v.lang}else u.lang='it-IT';
+  u.rate=+$('rate').value;u.pitch=+$('pitch').value;
+  u.onstart=()=>{if(my!==token)return;curChunk=k;lastAlive=Date.now();
+    idx=startPart!==undefined&&c.ids.includes(startPart)?startPart:c.ids[0];mark(true);
+    if(queuedTo<k+1){queuedTo=k+1;enqueue(k+1,my)}};
+  u.onboundary=e=>{if(my!==token)return;lastAlive=Date.now();const pos=from+(e.charIndex||0);
+    let j=0;while(j+1<c.offs.length&&c.offs[j+1]<=pos)j++;if(c.ids[j]!==idx){idx=c.ids[j];mark(true)}};
+  u.onend=()=>{if(my!==token)return;lastAlive=Date.now();if(k===chunks.length-1)finish()};
+  u.onerror=e=>{if(my!==token||e.error==='interrupted'||e.error==='canceled')return;lastAlive=0};
+  keep.push(u);if(keep.length>12)keep.shift();
+  synth.speak(u);
+}
+function devPlayFrom(i){
+  if(!synth){msg('Questo browser non ha voci di sistema: passa a ElevenLabs dalle impostazioni.');return}
+  const k=chunkOf(i);if(k<0){finish();return}
+  stopAll();const my=token;
+  if(parts[i].chunk===undefined)i=chunks[k].ids[0];
+  idx=i;playing=true;curChunk=k;queuedTo=k+1;startedAt=lastAlive=Date.now();
+  mark(true);setIcon();
+  setTimeout(()=>{if(my!==token)return;if(synth.paused)synth.resume();enqueue(k,my,i);enqueue(k+1,my)},50);
+}
+setInterval(()=>{
+  if(engine!=='device'||!synth||!playing||paused)return;
+  if(synth.paused)synth.resume();
+  if(synth.speaking||synth.pending){if(Date.now()-lastAlive>60000){lastAlive=Date.now();devPlayFrom(idx)}return}
+  if(Date.now()-lastAlive>1500&&Date.now()-startedAt>1500){
+    const k=parts[idx]&&parts[idx].chunk;const nk=(k===undefined?curChunk:k)+1;
+    if(nk>=chunks.length)finish();else devPlayFrom(chunks[nk].ids[0]);
+  }
+},700);
+function loadDeviceVoices(){
+  if(!synth)return;
+  voices=synth.getVoices();
+  if(engine==='device')fillVoices();
+}
+if(synth){loadDeviceVoices();synth.onvoiceschanged=loadDeviceVoices;setTimeout(loadDeviceVoices,700)}
+
+/* ---------- Motore 2: ElevenLabs ---------- */
+const audio=new Audio();audio.preload='auto';
+const elCache=new Map(); // blocco -> Promise dei dati audio
+let elK=-1,elUrl=null;
+function hash(s){let a=5381,b=52711;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=(a*33)^c;b=(b*33)^c}return (a>>>0).toString(36)+(b>>>0).toString(36)+s.length.toString(36)}
+function elVoiceId(){return engine==='el'?$('voice').value:store.get('lg_elvoice')||DEEP_EL}
+async function elFetch(k){
+  const c=chunks[k],voice=elVoiceId(),model=$('model').value;
+  const cacheKey=new URL('./_audio/'+hash(voice+'|'+model+'|'+c.text),location.href).href;
+  try{const hit=await (await caches.open('lg-audio')).match(cacheKey);if(hit)return await hit.json()}catch(e){}
+  if(!apiKey)throw new Error('nokey');
+  const body={text:c.text,model_id:model,voice_settings:{stability:0.5,similarity_boost:0.75,style:0,use_speaker_boost:true}};
+  if(chunks[k-1])body.previous_text=chunks[k-1].text.slice(-300);
+  if(chunks[k+1])body.next_text=chunks[k+1].text.slice(0,300);
+  let r;
+  try{r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/with-timestamps?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':apiKey,'Content-Type':'application/json'},body:JSON.stringify(body)})}
+  catch(e){throw new Error('net')}
+  if(!r.ok){let d='';try{const j=await r.json();d=(j.detail&&(j.detail.message||j.detail.status))||JSON.stringify(j.detail||j)}catch(e){}
+    const err=new Error('http');err.status=r.status;err.detail=d;throw err}
+  const data=await r.json();
+  try{(await caches.open('lg-audio')).put(cacheKey,new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}))}catch(e){}
+  return data;
+}
+function getChunk(k){
+  if(!elCache.has(k)){const p=elFetch(k);p.catch(()=>elCache.delete(k));elCache.set(k,p)}
+  return elCache.get(k);
+}
+function explain(e){
+  if(e.message==='nokey')return 'Inserisci la tua chiave API di ElevenLabs nelle impostazioni (rotella in alto).';
+  if(e.message==='net')return 'Non riesco a raggiungere ElevenLabs: controlla la connessione internet.';
+  const d=(e.detail||'').toLowerCase();
+  if(e.status===401)return d.includes('quota')||d.includes('credit')?'Crediti ElevenLabs esauriti.':'Chiave API non valida o senza permesso di sintesi vocale. Controllala nelle impostazioni.';
+  if(e.status===402||d.includes('quota'))return 'Crediti ElevenLabs esauriti per questo mese.';
+  if(e.status===429)return 'ElevenLabs è occupato o hai raggiunto il limite di richieste. Riprova tra poco.';
+  if(e.status===404||e.status===400&&d.includes('voice'))return 'Questa voce non è disponibile sul tuo account. Scegline un\'altra.';
+  return 'Errore ElevenLabs '+(e.status||'')+(e.detail?': '+e.detail:'');
+}
+function b64blob(b64){const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'audio/mpeg'})}
+function charTime(d,pos){const a=d.alignment&&d.alignment.character_start_times_seconds;return a&&a[pos]!=null?a[pos]:0}
+function charAt(d,t){const a=d.alignment&&d.alignment.character_start_times_seconds;if(!a||!a.length)return 0;let lo=0,hi=a.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(a[m]<=t)lo=m;else hi=m-1}return lo}
+async function elPlayFrom(i,auto){
+  const k=chunkOf(i);if(k<0){finish();return}
+  if(parts[i].chunk===undefined)i=chunks[k].ids[0];
+  if(!auto)stopAll();const my=++token;
+  idx=i;playing=true;paused=false;mark(true);msg('');
+  let d;
+  if(!elCache.has(k)||!auto)setIcon(true);
+  try{d=await getChunk(k)}catch(e){if(my!==token)return;playing=false;setIcon();msg(explain(e));return}
+  if(my!==token||paused||!playing)return;
+  if(elUrl)URL.revokeObjectURL(elUrl);
+  elUrl=URL.createObjectURL(b64blob(d.audio_base64));elK=k;elData=d;
+  audio.src=elUrl;audio.playbackRate=+$('rate').value;
+  const c=chunks[k],j=c.ids.indexOf(i),t=j>0?charTime(d,c.offs[j]):0;
+  if(t>0)audio.addEventListener('loadedmetadata',()=>{audio.currentTime=t},{once:true});
+  try{await audio.play()}catch(e){if(my!==token)return;playing=false;setIcon();msg('Tocca il tasto play per avviare l\'audio.');return}
+  if(my!==token)return;
+  setIcon();
+  if(k+1<chunks.length)getChunk(k+1).catch(()=>{}); // prepara il prossimo pezzo mentre ascolti
+}
+let elData=null;
+audio.ontimeupdate=()=>{
+  if(engine!=='el'||elK<0||!elData||!playing)return;
+  const c=chunks[elK];if(!c)return;const pos=charAt(elData,audio.currentTime);
+  let j=0;while(j+1<c.offs.length&&c.offs[j+1]<=pos)j++;
+  if(c.ids[j]!==idx){idx=c.ids[j];mark(true)}
+};
+audio.onended=()=>{
+  if(engine!=='el'||!playing||paused)return;
+  if(elK+1<chunks.length)elPlayFrom(chunks[elK+1].ids[0],true);else finish();
+};
+function cost(){
+  const n=chunks.reduce((s,c)=>s+c.text.length,0),f=$('model').value==='eleven_flash_v2_5'?0.5:1;
+  $('cost').textContent=n?`Il testo attuale ha ${n.toLocaleString('it-IT')} caratteri: circa ${Math.ceil(n*f).toLocaleString('it-IT')} crediti per ascoltarlo tutto la prima volta.`:'';
+}
+
+/* ---------- Voci e impostazioni ---------- */
+function fillVoices(){
+  if(engine==='el'){
+    const saved=store.get('lg_elvoice')||DEEP_EL;
+    $('voice').innerHTML=elVoices.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}${v.d?' · '+esc(v.d):''}</option>`).join('');
+    $('voice').value=elVoices.some(v=>v.id===saved)?saved:elVoices[0].id;
+  }else{
+    if(!voices.length){$('voice').innerHTML='<option value="">Voce predefinita</option>';return}
+    const saved=store.get('lg_voice');
+    const sorted=[...voices].sort((a,b)=>(b.lang.startsWith('it')-a.lang.startsWith('it'))||a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name));
+    $('voice').innerHTML=sorted.map(v=>`<option value="${esc(v.voiceURI)}">${esc(v.name)}${MALE.test(v.name)?' · maschile':''} (${v.lang})</option>`).join('');
+    const pick=sorted.find(v=>v.voiceURI===saved)||sorted.find(v=>v.lang.startsWith('it'))||sorted[0];
+    if(pick)$('voice').value=pick.voiceURI;
+  }
+}
+function labels(){
+  $('rv').textContent=(+$('rate').value).toFixed(2).replace(/\.?0+$/,'')+'×';
+  const p=+$('pitch').value;$('pv').textContent=engine==='el'?'—':p<0.6?'molto grave':p<0.9?'grave':p<=1.1?'normale':'acuto';
+  $('pitch').disabled=engine==='el';
+  const deep=engine==='el'?$('voice').value===DEEP_EL:p<=0.75;
+  $('pDeep').classList.toggle('on',deep);
+  $('pNat').classList.toggle('on',engine==='el'?false:Math.abs(p-1)<0.01&&Math.abs($('rate').value-1)<0.01);
+  $('engLbl').textContent=engine==='el'?'ElevenLabs':'Voci del telefono';
+}
+function setEngine(e){
+  stopAll();engine=e;store.set('lg_engine',e);
+  $('eDev').classList.toggle('on',e==='device');$('eEl').classList.toggle('on',e==='el');
+  $('elBox').hidden=e!=='el';
+  render();fillVoices();labels();setIcon();
+}
+function settingsChanged(){
+  labels();store.set('lg_rate',$('rate').value);store.set('lg_pitch',$('pitch').value);
+  store.set(engine==='el'?'lg_elvoice':'lg_voice',$('voice').value);
+  mark(false);
+  if(engine==='el'){audio.playbackRate=+$('rate').value;return}
+  if(playing&&!paused)devPlayFrom(idx);
+}
+$('voice').onchange=()=>{const wasPlaying=playing&&!paused;settingsChanged();if(engine==='el'){elCache.clear();if(wasPlaying)elPlayFrom(idx)}};
+$('rate').oninput=()=>{labels();if(engine==='el')audio.playbackRate=+$('rate').value};
+$('pitch').oninput=labels;
+$('rate').onchange=settingsChanged;$('pitch').onchange=settingsChanged;
+$('pDeep').onclick=()=>{
+  if(engine==='el'){$('voice').value=elVoices.some(v=>v.id===DEEP_EL)?DEEP_EL:$('voice').value;$('rate').value=0.95;elCache.clear();const w=playing&&!paused;settingsChanged();if(w)elPlayFrom(idx);return}
+  const it=voices.filter(v=>v.lang.startsWith('it'));
+  const m=it.find(v=>MALE.test(v.name)&&/enhanced|premium|avanzat|natural|neural|online/i.test(v.name))||it.find(v=>MALE.test(v.name));
+  if(m)$('voice').value=m.voiceURI;
+  $('pitch').value=m?0.7:0.55;$('rate').value=0.92;settingsChanged();
+  if(!m)$('st').textContent='Nessuna voce maschile italiana: abbasso il tono';
+};
+$('pNat').onclick=()=>{$('pitch').value=1;$('rate').value=1;settingsChanged()};
+
+$('gear').onclick=()=>{$('sheet').hidden=!$('sheet').hidden;if(!$('sheet').hidden)$('sheet').scrollIntoView({behavior:'smooth'})};
+$('closeSheet').onclick=()=>{$('sheet').hidden=true};
+$('eDev').onclick=()=>setEngine('device');
+$('eEl').onclick=()=>{setEngine('el');if(!apiKey){$('key').focus();keyState('Inserisci la chiave per usare ElevenLabs.','')}};
+function keyState(t,cls){$('keyState').innerHTML=cls?`<span class="${cls}">${esc(t)}</span>`:esc(t)}
+$('saveKey').onclick=async()=>{
+  const k=$('key').value.trim();
+  if(!k){apiKey='';store.del('lg_key');keyState('Chiave rimossa da questo telefono.','');return}
+  apiKey=k;store.set('lg_key',k);$('key').value='';$('key').placeholder='Chiave salvata ••••'+k.slice(-4);
+  keyState('Chiave salvata. Controllo…','');
+  try{const r=await fetch('https://api.elevenlabs.io/v1/user/subscription',{headers:{'xi-api-key':k}});
+    if(r.ok){const s=await r.json();keyState(`Chiave valida. Crediti usati: ${(s.character_count||0).toLocaleString('it-IT')} su ${(s.character_limit||0).toLocaleString('it-IT')}.`,'ok')}
+    else if(r.status===401)keyState('Chiave salvata. Non posso leggere i crediti (permesso mancante), ma la lettura potrebbe funzionare comunque: prova.','');
+    else keyState('Chiave salvata, ma ElevenLabs ha risposto con errore '+r.status+'.','bad');
+  }catch(e){keyState('Chiave salvata. Non riesco a verificarla adesso (sei offline?).','')}
+};
+$('loadVoices').onclick=async()=>{
+  if(!apiKey){keyState('Prima salva la chiave API.','bad');return}
+  try{const r=await fetch('https://api.elevenlabs.io/v1/voices',{headers:{'xi-api-key':apiKey}});
+    if(!r.ok)throw r.status;
+    const j=await r.json();
+    const list=(j.voices||[]).map(v=>{const l=v.labels||{};const g=l.gender==='male'?'maschile':l.gender==='female'?'femminile':'';return{id:v.voice_id,name:v.name,d:[g,l.description||l.descriptive||l.accent].filter(Boolean).join(', ')}});
+    if(!list.length)throw 'vuoto';
+    list.sort((a,b)=>(b.d.includes('maschile')-a.d.includes('maschile'))||a.name.localeCompare(b.name));
+    elVoices=list;store.set('lg_elvoices',JSON.stringify(list));fillVoices();labels();
+    keyState(`Caricate ${list.length} voci dal tuo account.`,'ok');
+  }catch(e){keyState('Non riesco a caricare le voci del tuo account'+(e===401?' (la chiave non ha il permesso "voci")':'')+'. Restano quelle predefinite.','bad')}
+};
+$('clearAudio').onclick=async()=>{try{await caches.delete('lg-audio');elCache.clear();keyState('Audio salvato cancellato.','ok')}catch(e){}};
+$('model').onchange=()=>{store.set('lg_model',$('model').value);elCache.clear();cost()};
+
+/* ---------- Comandi ---------- */
+const playFrom=i=>engine==='el'?elPlayFrom(i):devPlayFrom(i);
+function togglePlay(){
+  if(!chunks.length)return;
+  if(playing&&!paused){paused=true;if(engine==='el')audio.pause();else{token++;synth&&synth.cancel()}setIcon();return}
+  if(engine==='el'&&paused&&elK>=0&&audio.src&&chunks[elK]&&chunks[elK].ids.includes(idx)){paused=false;audio.play().catch(()=>{});setIcon();return}
+  playFrom(idx);
+}
+$('play').onclick=togglePlay;
+$('stop').onclick=()=>{stopAll();idx=0;mark(false);setIcon()};
+function step(d){let i=idx+d;while(i>0&&i<parts.length-1&&parts[i].chunk===undefined)i+=d;i=Math.max(0,Math.min(parts.length-1,i));
+  if(playing&&!paused)playFrom(i);else{idx=i;paused=false;playing=false;mark(true);setIcon()}}
+$('back').onclick=()=>step(-1);$('fwd').onclick=()=>step(1);
+$('reader').onclick=e=>{const s=e.target.closest('span[data-i]');if(s)playFrom(+s.dataset.i)};
+document.addEventListener('visibilitychange',()=>{if(engine==='device'&&!document.hidden&&playing&&!paused&&synth&&!synth.speaking)devPlayFrom(idx)});
+if('mediaSession' in navigator){
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:'Leggimi',artist:'Lettura ad alta voce',artwork:[{src:'icon-512.png',sizes:'512x512',type:'image/png'}]})}catch(e){}
+  const h={play:()=>{if(!(playing&&!paused))togglePlay()},pause:()=>{if(playing&&!paused)togglePlay()},nexttrack:()=>step(1),previoustrack:()=>step(-1)};
+  for(const a in h){try{navigator.mediaSession.setActionHandler(a,h[a])}catch(e){}}
+}
+
+function setText(t){stopAll();text=t;idx=0;store.set('lg_text',t);render();setIcon()}
+/* ---------- PDF ---------- */
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfReady=null;
+function loadPdfJs(){
+  if(!pdfReady)pdfReady=new Promise((ok,ko)=>{
+    if(window.pdfjsLib)return ok();
+    const s=document.createElement('script');s.src=PDFJS+'pdf.min.js';
+    s.onload=()=>{let n=0;const w=setInterval(()=>{if(window.pdfjsLib){clearInterval(w);ok()}else if(++n>50){clearInterval(w);ko(new Error('pdfjs'))}},100)};
+    s.onerror=()=>ko(new Error('pdfjs'));document.head.appendChild(s);
+  }).then(()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'}).catch(e=>{pdfReady=null;throw e});
+  return pdfReady;
+}
+async function pdfText(file){
+  try{await loadPdfJs()}catch(e){throw new Error('Non riesco a caricare il lettore PDF: serve internet la prima volta.')}
+  let doc;
+  try{doc=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise}
+  catch(e){throw new Error(e&&e.name==='PasswordException'?'Questo PDF è protetto da password.':'Non riesco ad aprire questo PDF.')}
+  const pages=[];
+  for(let n=1;n<=doc.numPages;n++){
+    $('st').textContent=`Leggo il PDF… pagina ${n} di ${doc.numPages}`;
+    const tc=await (await doc.getPage(n)).getTextContent();
+    // ricompone le righe in base alla posizione verticale
+    const lines=[];let cur=null;
+    for(const it of tc.items){
+      if(!('str' in it))continue;
+      const y=it.transform[5],h=Math.abs(it.transform[3])||it.height||10;
+      if(!cur||Math.abs(y-cur.y)>h*0.5){cur={t:'',y,h};lines.push(cur)}
+      cur.t+=it.str;if(it.hasEOL)cur=null;
+    }
+    // unisce le righe in paragrafi, toglie numeri di pagina e trattini di fine riga
+    let out='',prev=null;
+    for(const l of lines){
+      const t=l.t.replace(/\s+/g,' ').trim();
+      if(!t||/^(pag\.?\s*)?\d{1,4}$/i.test(t))continue;
+      if(!prev)out=t;
+      else if(prev.y-l.y>Math.max(prev.h,l.h)*1.7||l.y>prev.y+prev.h*2)out+='\n\n'+t;
+      else if(/[A-Za-zÀ-ÿ]-$/.test(out)&&/^[a-zà-ÿ]/.test(t))out=out.slice(0,-1)+t;
+      else out+=' '+t;
+      prev=l;
+    }
+    pages.push(out);
+  }
+  const text=pages.filter(Boolean).join('\n\n').trim();
+  if(text.replace(/\s/g,'').length<15)throw new Error('Questo PDF sembra una scansione (immagini senza testo): non riesco a leggerlo.');
+  return text;
+}
+$('file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;e.target.value='';msg('');
+  try{
+    let t;
+    if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){stopAll();t=await pdfText(f)}
+    else{t=await f.text();if(/\.html?$/i.test(f.name)){const d=new DOMParser().parseFromString(t,'text/html');t=d.body.innerText||d.body.textContent}}
+    setText(t.replace(/\r/g,''));$('st').textContent='Caricato: '+f.name;
+  }catch(e){msg(e.message);$('st').textContent='Pronto'}
+};
+let editing=false;
+$('edit').onclick=()=>{
+  editing=!editing;
+  if(editing){$('input').value=text===SAMPLE?'':text;$('input').hidden=false;$('reader').hidden=true;$('hint').hidden=true;$('edit').textContent='Fatto';$('edit').classList.add('fill');$('input').focus()}
+  else{$('input').hidden=true;$('reader').hidden=false;$('hint').hidden=false;$('edit').textContent='Scrivi o incolla';$('edit').classList.remove('fill');setText($('input').value)}
+};
+$('clear').onclick=()=>{if(editing)$('input').value='';else setText('')};
+
+/* ---------- Installazione ---------- */
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('install').hidden=false});
+$('install').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice.catch(()=>{});deferred=null;$('install').hidden=true};
+window.addEventListener('appinstalled',()=>{$('install').hidden=true});
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ---------- Avvio ---------- */
+const r=store.get('lg_rate'),p=store.get('lg_pitch'),m=store.get('lg_model');
+if(r)$('rate').value=r;if(p)$('pitch').value=p;if(m)$('model').value=m;
+if(apiKey)$('key').placeholder='Chiave salvata ••••'+apiKey.slice(-4);
+// Testo condiviso da un'altra app (Android: Condividi → Leggimi)
+const q=new URLSearchParams(location.search),shared=[q.get('title'),q.get('text'),q.get('url')].filter(Boolean).join('\n\n');
+if(shared){text=shared;idx=0;store.set('lg_text',shared);history.replaceState(null,'',location.pathname)}
+setEngine(engine);
+}
+</script>
+</body>
+</html>
